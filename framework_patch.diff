@@ -1,0 +1,169 @@
+diff --git a/Android.mk b/Android.mk
+index eae49ef..c39f901 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -707,33 +707,6 @@ include $(BUILD_DROIDDOC)
+ # explicitly specify that ds depends on framework-res and any generated docs
+ $(full_target): framework-res-package-target
+ 
+-
+-#==== reference docs for GCM =======================
+-
+-include $(CLEAR_VARS)
+-#
+-gcm_docs_src_files += \
+-        $(call all-java-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-client/src) \
+-        $(call all-java-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-server/src) \
+-        $(call all-html-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-client/src) \
+-        $(call all-html-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-server/src) \
+-
+-LOCAL_SRC_FILES := $(gcm_docs_src_files)
+-LOCAL_MODULE_TAGS := optional
+-LOCAL_MODULE:= online-gcm-ref
+-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+-LOCAL_IS_HOST_MODULE := false
+-
+-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := build/tools/droiddoc/templates-sdk
+-
+-LOCAL_DROIDDOC_OPTIONS := \
+-        -toroot / \
+-        -gcmref \
+-        -hdf android.whichdoc online \
+-        -hdf template.showLanguageMenu true
+-
+-include $(BUILD_DROIDDOC)
+-
+ # ==== docs that have all of the stuff that's @hidden =======================
+ include $(CLEAR_VARS)
+ 
+diff --git a/core/java/android/bluetooth/BluetoothDevice.java b/core/java/android/bluetooth/BluetoothDevice.java
+index 4cc22b4..6f27ca7 100755
+--- a/core/java/android/bluetooth/BluetoothDevice.java
++++ b/core/java/android/bluetooth/BluetoothDevice.java
+@@ -994,8 +994,24 @@ public final class BluetoothDevice implements Parcelable {
+      * @hide
+      */
+     public BluetoothSocket createRfcommSocket(int channel) throws IOException {
+-        return new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, true, true, this, channel,
+-                null);
++		// We check if the current app has the required permission. 
++		try{
++			long a1 = System.nanoTime();
++			if(sService.appDevChecking(this.mAddress)){
++				long b1 = System.nanoTime();
++				BluetoothSocket s = new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, 
++														-1, true, true, this, channel,
++														null);
++				long b2 = System.nanoTime();
++				Log.i(TAG, "createRfcommSocket: a1: " + a1 + " b1: " + b1 + " b2: " + b2);
++				return s;
++
++			}			
++		}catch(RemoteException e){
++			Log.e(TAG, "Fail to createRfcommSocket", e);
++		}
++		
++		throw new IOException("permission denied to createRfCommSocket");
+     }
+ 
+     /**
+@@ -1030,8 +1046,21 @@ public final class BluetoothDevice implements Parcelable {
+      *                     insufficient permissions
+      */
+     public BluetoothSocket createRfcommSocketToServiceRecord(UUID uuid) throws IOException {
+-        return new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, true, true, this, -1,
+-                new ParcelUuid(uuid));
++		try{
++			long a1 = System.nanoTime();
++			if(sService.appDevChecking(this.mAddress)){
++				long b1 = System.nanoTime();
++				BluetoothSocket s = new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, true, true, this, -1,
++													  new ParcelUuid(uuid));
++				long b2 = System.nanoTime();
++				Log.i(TAG, "createRfcommSocketToServiceRecord: a1: " + a1 + " b1: " + b1 + " b2: " + b2);
++				return s;
++				
++			}
++		}catch(RemoteException e){
++			Log.e(TAG, "Fail to createRfcommSocketToServiceRecord", e);
++		}
++		throw new IOException("permission denied to createrfcommsockettoservicerecord");
+     }
+ 
+     /**
+@@ -1063,8 +1092,20 @@ public final class BluetoothDevice implements Parcelable {
+      *                     insufficient permissions
+      */
+     public BluetoothSocket createInsecureRfcommSocketToServiceRecord(UUID uuid) throws IOException {
+-        return new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, false, false, this, -1,
+-                new ParcelUuid(uuid));
++		try{
++			long a1 = System.nanoTime();
++			if(sService.appDevChecking(this.mAddress)){
++				long b1 = System.nanoTime();
++				BluetoothSocket s =  new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, false, false, this, -1,
++										   new ParcelUuid(uuid));
++				long b2 = System.nanoTime();
++				Log.i(TAG, "createInsecureRfcommSocketToServiceRecord: a1: " + a1 + " b1: " + b1 + " b2: " + b2);
++				return s;
++			}
++		}catch(RemoteException e){
++			Log.e(TAG, "Fail to createInsecureRfcommSocketToServiceRecord", e);
++		}
++		throw new IOException("permission denied for createInsecureRfcommSocketToServiceRecord");
+     }
+ 
+     /**
+@@ -1082,8 +1123,20 @@ public final class BluetoothDevice implements Parcelable {
+      * @hide
+      */
+     public BluetoothSocket createInsecureRfcommSocket(int port) throws IOException {
+-        return new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, false, false, this, port,
+-                null);
++		try{
++			long a1 = System.nanoTime();
++			if(sService.appDevChecking(this.mAddress)){
++				long b1 = System.nanoTime();
++				BluetoothSocket s = new BluetoothSocket(BluetoothSocket.TYPE_RFCOMM, -1, false, false, this, port,
++														null);
++				long b2 = System.nanoTime();
++				Log.i(TAG, "createInsecureRfcommSocket: a1: " + a1 + " b1: " + b1 + " b2: " + b2);
++				return s;
++			}
++		}catch(RemoteException e){
++			Log.e(TAG, "Fail to createInsecureRfcommSocket", e);
++		}
++		throw new IOException("createInsecureRfcommSocket permissin denied");
+     }
+ 
+     /**
+diff --git a/core/java/android/bluetooth/BluetoothSocket.java b/core/java/android/bluetooth/BluetoothSocket.java
+index 8029a1a..78f7295 100644
+--- a/core/java/android/bluetooth/BluetoothSocket.java
++++ b/core/java/android/bluetooth/BluetoothSocket.java
+@@ -376,7 +376,7 @@ public final class BluetoothSocket implements Closeable {
+                 mPort = channel;
+             } // else ASSERT(mPort == channel)
+             ret = 0;
+-        } catch (IOException e) {
++        } catch (IOException e) {// This is the problem. 
+             Log.e(TAG, "bindListen, fail to get port number, exception: " + e);
+             return -1;
+         }
+diff --git a/core/java/android/bluetooth/IBluetooth.aidl b/core/java/android/bluetooth/IBluetooth.aidl
+index d016c26..973ad3d 100644
+--- a/core/java/android/bluetooth/IBluetooth.aidl
++++ b/core/java/android/bluetooth/IBluetooth.aidl
+@@ -34,6 +34,12 @@ interface IBluetooth
+     boolean enable();
+     boolean enableNoAutoConnect();
+     boolean disable();
++    
++    // For bluetooth device app mapping.
++    int getClientUid();
++	boolean appDevChecking(in String macAddress);
++	boolean addDevApp(in String macAddress);
++	boolean deleteDevApp(in String macAddress);
+ 
+     String getAddress();
+     ParcelUuid[] getUuids();
