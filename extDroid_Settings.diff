@@ -1,0 +1,127 @@
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index b5c04b0..a658024 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -1070,6 +1070,10 @@
+     <string name="bluetooth_device_context_pair_connect">Pair &amp; connect</string>
+     <!-- Bluetooth settings.  Context menu item for a device.  Action will remove pairing with the device. -->
+     <string name="bluetooth_device_context_unpair">Unpair</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will unbond a device to an app. -->
++    <string name="bluetooth_device_context_unbond">Unbond</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will bond a device to an app. -->
++    <string name="bluetooth_device_context_bond">Bond</string>
+     <!-- Bluetooth settings.  Context menu item for a device.  Action will disconnect and remove pairing with the device. -->
+     <string name="bluetooth_device_context_disconnect_unpair">Disconnect &amp; unpair</string>
+     <!-- Bluetooth settings.  Context menu item for a device.  Action will take the user to another screen where they can choose exactly which profiles to connect to. -->
+diff --git a/res/xml/bluetooth_device_advanced.xml b/res/xml/bluetooth_device_advanced.xml
+index 8d2261c..028f045 100644
+--- a/res/xml/bluetooth_device_advanced.xml
++++ b/res/xml/bluetooth_device_advanced.xml
+@@ -30,7 +30,21 @@
+             android:order="40"
+             android:persistent="false"
+             />
+-
++            
++    <Preference
++            android:key="unbond"
++            android:title="@string/bluetooth_device_context_unbond"
++            android:order="40"
++            android:persistent="false"
++            />
++    
++    <Preference
++            android:key="bond"
++            android:title="@string/bluetooth_device_context_bond"
++            android:order="40"
++            android:persistent="false"
++            />
++    
+     <PreferenceCategory
+             android:key="profile_container"
+             android:order="100"
+diff --git a/src/com/android/settings/bluetooth/BluetoothSettings.java b/src/com/android/settings/bluetooth/BluetoothSettings.java
+index e9ba39d..c8606c2 100755
+--- a/src/com/android/settings/bluetooth/BluetoothSettings.java
++++ b/src/com/android/settings/bluetooth/BluetoothSettings.java
+@@ -187,6 +187,7 @@ public final class BluetoothSettings extends DeviceListPreferenceFragment {
+ 
+     @Override
+     public boolean onOptionsItemSelected(MenuItem item) {
++        // global menus
+         switch (item.getItemId()) {
+             case MENU_ID_SCAN:
+                 if (mLocalAdapter.getBluetoothState() == BluetoothAdapter.STATE_ON) {
+diff --git a/src/com/android/settings/bluetooth/CachedBluetoothDevice.java b/src/com/android/settings/bluetooth/CachedBluetoothDevice.java
+index 4b19b9c..c6fdf44 100755
+--- a/src/com/android/settings/bluetooth/CachedBluetoothDevice.java
++++ b/src/com/android/settings/bluetooth/CachedBluetoothDevice.java
+@@ -323,6 +323,17 @@ final class CachedBluetoothDevice implements Comparable<CachedBluetoothDevice> {
+         }
+     }
+ 
++    void unbond(){
++        // unbond device here;
++        final BluetoothDevice dev = mDevice;
++        if (dev != null){
++            final boolean successful = dev.removeDevBond();
++            if (successful){
++                Log.d(TAG, "Command send successfully:UNBOND ");
++            }
++        }
++    }
++
+     int getProfileConnectionState(LocalBluetoothProfile profile) {
+         if (mProfileConnectionState == null ||
+                 mProfileConnectionState.get(profile) == null) {
+diff --git a/src/com/android/settings/bluetooth/DeviceProfilesSettings.java b/src/com/android/settings/bluetooth/DeviceProfilesSettings.java
+index 335d888..f742746 100755
+--- a/src/com/android/settings/bluetooth/DeviceProfilesSettings.java
++++ b/src/com/android/settings/bluetooth/DeviceProfilesSettings.java
+@@ -53,6 +53,9 @@ public final class DeviceProfilesSettings extends SettingsPreferenceFragment
+     private static final String KEY_RENAME_DEVICE = "rename_device";
+     private static final String KEY_PROFILE_CONTAINER = "profile_container";
+     private static final String KEY_UNPAIR = "unpair";
++    private static final String KEY_UNBOUND = "unbond";
++    private static final String KEY_BOND = "bond";
++
+ 
+     public static final String EXTRA_DEVICE = "device";
+     private RenameEditTextPreference mRenameDeviceNamePref;
+@@ -233,6 +236,19 @@ public final class DeviceProfilesSettings extends SettingsPreferenceFragment
+             return true;
+         }
+ 
++        // Dabinder
++        if (key.equals(KEY_BOND)){
++            bondDevice();
++            finish();
++            return true;    //don't start activities
++        }
++
++        if(key.equals(KEY_UNBOUND)){
++            unbondDevice();
++            finish();
++            return true;
++        }
++
+         return super.onPreferenceTreeClick(screen, preference);
+     }
+ 
+@@ -363,4 +379,16 @@ public final class DeviceProfilesSettings extends SettingsPreferenceFragment
+     private void unpairDevice() {
+         mCachedDevice.unpair();
+     }
++
++    // Dabinder
++    private void unbondDevice(){
++        mCachedDevice.unbond();
++    }
++
++    private void bondDevice(){
++        //TODO add bond device activity so the user can chose which
++        // app to bond
++        return;
++    }
++
+ }

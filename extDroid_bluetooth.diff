@@ -9,28 +9,28 @@ index 2fd6532..08ff588 100755
 +import android.content.ContentResolver;
 +import android.provider.Settings;
  import android.os.ServiceManager;
- 
+
  public class AdapterService extends Service {
 @@ -133,11 +135,20 @@ public class AdapterService extends Service {
      private boolean mProfilesStarted;
      private boolean mNativeAvailable;
      private boolean mCleaningUp;
 -    private HashMap<String,Integer> mProfileServicesState = new HashMap<String,Integer>();
-+    
++
 +    // Keep track of the state of each profile
 +    private HashMap<String,Integer> mProfileServicesState = new HashMap<String,
 +        Integer>();
-+    
-+    private HashMap<String, Integer> mDeviceAccessMatrix = new HashMap<String, 
++
++    private HashMap<String, Integer> mDeviceAccessMatrix = new HashMap<String,
 +        Integer>();
-+	
-+	private ContentResolver mContentResolver = null;
-+    
++
++   private ContentResolver mContentResolver = null;
++
      private RemoteCallbackList<IBluetoothCallback> mCallbacks;//Only BluetoothManagerService should be registered
      private int mCurrentRequestId;
      private boolean mQuietmode = false;
 -
-+ 
++
      public AdapterService() {
          super();
          if (TRACE_REF) {
@@ -39,39 +39,38 @@ index 2fd6532..08ff588 100755
          getAdapterPropertyNative(AbstractionLayer.BT_PROPERTY_BDADDR);
          getAdapterPropertyNative(AbstractionLayer.BT_PROPERTY_BDNAME);
 -
-+		mContentResolver = getContentResolver();
++       mContentResolver = getContentResolver();
      }
- 
+
      @Override
 @@ -480,6 +491,31 @@ public class AdapterService extends Service {
      private static class AdapterServiceBinder extends IBluetooth.Stub {
          private AdapterService mService;
- 
+
 +        public int getClientUid(){
 +            AdapterService service = getService();
 +            if(service == null) return 0;
 +            return service.getClientUid();
 +        }
-+        
++
 +        public boolean appDevChecking(String macAddress){
-+            // TODO(xzhou) add 
 +            AdapterService service = getService();
 +            if(service == null) return false;
 +            return service.appDevChecking(macAddress);
 +        }
-+        
++
 +        public boolean addDevApp(String macAddress){
 +            AdapterService service = getService();
 +            if(service == null) return false;
 +            return service.addDevApp(macAddress);
 +        }
-+        
++
 +        public boolean deleteDevApp(String macAddress){
 +            AdapterService service = getService();
 +            if(service == null) return false;
 +            return service.deleteDevApp(macAddress);
 +        }
-+            
++
          public AdapterServiceBinder(AdapterService svc) {
              mService = svc;
          }
@@ -79,133 +78,132 @@ index 2fd6532..08ff588 100755
                  (!Utils.checkCaller())) {
                  Log.w(TAG,"enable(): not allowed for non-active user and non system user");
                  return false;
--	    }
+-       }
 +            }
- 
+
              AdapterService service = getService();
              if (service == null) return false;
 @@ -525,7 +561,7 @@ public class AdapterService extends Service {
                  (!Utils.checkCaller())) {
                  Log.w(TAG,"enableNoAuto(): not allowed for non-active user and non system user");
                  return false;
--	    }
+-       }
 +            }
- 
+
              AdapterService service = getService();
              if (service == null) return false;
 @@ -714,6 +750,7 @@ public class AdapterService extends Service {
          }
- 
+
          public boolean removeBond(BluetoothDevice device) {
-+            //TODO(xzhou) Add permission checking function here
              if (!Utils.checkCaller()) {
                  Log.w(TAG,"removeBond(): not allowed for non-active user");
                  return false;
 @@ -876,6 +913,92 @@ public class AdapterService extends Service {
- 
- 
+
+
      //----API Methods--------
-+    
++
 +    int getClientUid(){
 +        return Binder.getCallingUid();
 +    }
-+    
-+	/*
++
++   /*
 +    public boolean appDevChecking(String macAddress){
-+		int uid = getClientUid();
-+		//TODO(xzhou) if the call comes from system
-+		if(uid == Process.SYSTEM_UID) return true;
-+		if(mDeviceAccessMatrix.containsKey(macAddress)){
-+			int devOwner = mDeviceAccessMatrix.get(macAddress);
-+			return uid == devOwner;
-+		}else{
-+			// The first time an app, automatically grant the permission.
-+            // TODO(xzhou) We need more sofiscated 
-+			addDevApp(macAddress);
-+			return true;
-+		}
-+	}
-+	*/
++       int uid = getClientUid();
++       //TODO() if the call comes from system
++       if(uid == Process.SYSTEM_UID) return true;
++       if(mDeviceAccessMatrix.containsKey(macAddress)){
++           int devOwner = mDeviceAccessMatrix.get(macAddress);
++           return uid == devOwner;
++       }else{
++           // The first time an app, automatically grant the permission.
++            // TODO() We need more sofiscated
++           addDevApp(macAddress);
++           return true;
++       }
++   }
++   */
 +
-+	public boolean appDevChecking(String macAddress){
-+		int uid = getClientUid();
-+		//TODO(xzhou) if the call comes from system
-+		if(uid == Process.SYSTEM_UID) return true;
-+		int devOwner = Settings.Secure.getInt(mContentResolver, macAddress, 0);
-+		if(devOwner != 0){
-+			return uid == devOwner;
-+		}else{
-+			// The first time an app, automatically grant the permission.
-+            // TODO(xzhou) We need more sofiscated 
-+			addDevApp(macAddress);
-+			return true;
-+		}
-+	}
++   public boolean appDevChecking(String macAddress){
++       int uid = getClientUid();
++       //TODO() if the call comes from system
++       if(uid == Process.SYSTEM_UID) return true;
++       int devOwner = Settings.Secure.getInt(mContentResolver, macAddress, 0);
++       if(devOwner != 0){
++           return uid == devOwner;
++       }else{
++           // The first time an app, automatically grant the permission.
++            // TODO() We need more sofiscated
++           addDevApp(macAddress);
++           return true;
++       }
++   }
 +
-+	public boolean addDevApp(String macAddress){
-+		int uid = getClientUid();
-+		if(Settings.Secure.getInt(mContentResolver, macAddress, 0) == 0){
-+			// TODO(xzhou) now first come, first get, change it so user can 
-+			// specify it. 
-+			Settings.Secure.putInt(mContentResolver, macAddress, uid);
-+			return true;
-+		}
-+		return false;
-+	}
++   public boolean addDevApp(String macAddress){
++       int uid = getClientUid();
++       if(Settings.Secure.getInt(mContentResolver, macAddress, 0) == 0){
++           // TODO() now first come, first get, change it so user can
++           // specify it.
++           Settings.Secure.putInt(mContentResolver, macAddress, uid);
++           return true;
++       }
++       return false;
++   }
 +
-+	public boolean deleteDevApp(String macAddress){
-+		int uid = getClientUid();
-+		if(!appDevChecking(macAddress)){
-+			Log.e(TAG, "Delete Dev App " + uid + " permission denied");
-+			return false;
-+		}else{
-+			//reset the value
-+			Settings.Secure.putInt(mContentResolver, macAddress, 0);
-+			return true;
-+		}
-+	}
++   public boolean deleteDevApp(String macAddress){
++       int uid = getClientUid();
++       if(!appDevChecking(macAddress)){
++           Log.e(TAG, "Delete Dev App " + uid + " permission denied");
++           return false;
++       }else{
++           //reset the value
++           Settings.Secure.putInt(mContentResolver, macAddress, 0);
++           return true;
++       }
++   }
 +
-+	/*
-+	public boolean deleteDevApp(String macAddress){
-+		int uid = getClientUid();
-+		if(!appDevChecking(macAddress)){
-+			Log.e(TAG, "DeleteDevApp" + uid + "permission denied");
-+			return false;
-+		}else{
-+			mDeviceAccessMatrix.remove(macAddress);
++   /*
++   public boolean deleteDevApp(String macAddress){
++       int uid = getClientUid();
++       if(!appDevChecking(macAddress)){
++           Log.e(TAG, "DeleteDevApp" + uid + "permission denied");
++           return false;
++       }else{
++           mDeviceAccessMatrix.remove(macAddress);
 +            return true;
-+		}
-+	}
++       }
++   }
 +
-+	public boolean addDevApp(String macAddress){
-+		// when adding an entry to the matrix, only affect the current app
-+		int uid = getClientUid();
-+		if( mDeviceAccessMatrix.containsKey(macAddress) ){
-+			Log.e(TAG, "device " + macAddress + " assigned to " + 
++   public boolean addDevApp(String macAddress){
++       // when adding an entry to the matrix, only affect the current app
++       int uid = getClientUid();
++       if( mDeviceAccessMatrix.containsKey(macAddress) ){
++           Log.e(TAG, "device " + macAddress + " assigned to " +
 +                mDeviceAccessMatrix.get(macAddress));
-+			return false;
-+		}else{
-+			mDeviceAccessMatrix.put(macAddress, uid);
++           return false;
++       }else{
++           mDeviceAccessMatrix.put(macAddress, uid);
 +            return true;
-+		}
-+	}
-+	*/
-+    
++       }
++   }
++   */
++
       boolean isEnabled() {
          enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
- 
+
 @@ -1172,6 +1295,14 @@ public class AdapterService extends Service {
      }
- 
+
       boolean removeBond(BluetoothDevice device) {
-+         // TODO(xzhou) unpairing
-+		 // performance checking
-+		 Long t1 = System.nanoTime();
-+		 if(!appDevChecking(device.getAddress())){
-+			 errorLog("ext Droid: permission denied");
-+			 return false;
-+		 }
-+		 long t2 = System.nanoTime();
++         // TODO( ) unpairing
++        // performance checking
++        Long t1 = System.nanoTime();
++        if(!appDevChecking(device.getAddress())){
++            errorLog("ext Droid: permission denied");
++            return false;
++        }
++        long t2 = System.nanoTime();
          enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM, "Need BLUETOOTH ADMIN permission");
          DeviceProperties deviceProp = mRemoteDevices.getDeviceProperties(device);
          if (deviceProp == null || deviceProp.getBondState() != BluetoothDevice.BOND_BONDED) {
@@ -213,67 +211,67 @@ index 2fd6532..08ff588 100755
          Message msg = mBondStateMachine.obtainMessage(BondStateMachine.REMOVE_BOND);
          msg.obj = device;
          mBondStateMachine.sendMessage(msg);
-+		long t3 = System.nanoTime();
++       long t3 = System.nanoTime();
          return true;
      }
- 
+
 @@ -1237,6 +1369,11 @@ public class AdapterService extends Service {
- 
+
       boolean setPin(BluetoothDevice device, boolean accept, int len, byte[] pinCode) {
          enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
-+		if(!appDevChecking(device.getAddress())){
-+			 errorLog("extDroid: no permission to set passkey");
-+			 return false;
-+		 }
++       if(!appDevChecking(device.getAddress())){
++            errorLog("extDroid: no permission to set passkey");
++            return false;
++        }
 +
          DeviceProperties deviceProp = mRemoteDevices.getDeviceProperties(device);
          if (deviceProp == null || deviceProp.getBondState() != BluetoothDevice.BOND_BONDING) {
              return false;
 @@ -1247,7 +1384,12 @@ public class AdapterService extends Service {
      }
- 
+
       boolean setPasskey(BluetoothDevice device, boolean accept, int len, byte[] passkey) {
 +         // TODO(permission checking)
          enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
-+		 if(!appDevChecking(device.getAddress())){
-+			 errorLog("extDroid: no permission to set passkey, not owner of the device");
-+			 return false;
-+		 }
++        if(!appDevChecking(device.getAddress())){
++            errorLog("extDroid: no permission to set passkey, not owner of the device");
++            return false;
++        }
          DeviceProperties deviceProp = mRemoteDevices.getDeviceProperties(device);
          if (deviceProp == null || deviceProp.getBondState() != BluetoothDevice.BOND_BONDING) {
              return false;
 @@ -1259,7 +1401,12 @@ public class AdapterService extends Service {
      }
- 
+
       boolean setPairingConfirmation(BluetoothDevice device, boolean accept) {
 +         // TODO (permission checking)
          enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
 +        if(!appDevChecking(device.getAddress())){
 +            errorLog("extDroid: permission denied");
 +            return false;
-+		}
++       }
          DeviceProperties deviceProp = mRemoteDevices.getDeviceProperties(device);
          if (deviceProp == null || deviceProp.getBondState() != BluetoothDevice.BOND_BONDING) {
              return false;
 @@ -1272,17 +1419,19 @@ public class AdapterService extends Service {
- 
+
       void sendConnectionStateChange(BluetoothDevice
              device, int profile, int state, int prevState) {
 -        // TODO(BT) permission check?
          // Since this is a binder call check if Bluetooth is on still
          if (getState() == BluetoothAdapter.STATE_OFF) return;
- 
+
          mAdapterProperties.sendConnectionStateChange(device, profile, state, prevState);
 -
      }
- 
+
       ParcelFileDescriptor connectSocket(BluetoothDevice device, int type,
                                                ParcelUuid uuid, int port, int flag) {
          enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
-+		 if(!appDevChecking(device.getAddress())){
-+			 errorLog("extDroid: permission denied, not owner of the device or system user");
-+			 return null;
-+		 }
++        if(!appDevChecking(device.getAddress())){
++            errorLog("extDroid: permission denied, not owner of the device or system user");
++            return null;
++        }
          int fd = connectSocketNative(Utils.getBytesFromAddress(device.getAddress()),
                     type, Utils.uuidToByteArray(uuid), port, flag);
          if (fd < 0) {

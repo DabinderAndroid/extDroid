@@ -1,0 +1,119 @@
+diff --git a/Android.mk b/Android.mk
+index eae49ef..c39f901 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -707,33 +707,6 @@ include $(BUILD_DROIDDOC)
+ # explicitly specify that ds depends on framework-res and any generated docs
+ $(full_target): framework-res-package-target
+ 
+-
+-#==== reference docs for GCM =======================
+-
+-include $(CLEAR_VARS)
+-#
+-gcm_docs_src_files += \
+-        $(call all-java-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-client/src) \
+-        $(call all-java-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-server/src) \
+-        $(call all-html-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-client/src) \
+-        $(call all-html-files-under, ../../vendor/unbundled_google/libs/gcm/gcm-server/src) \
+-
+-LOCAL_SRC_FILES := $(gcm_docs_src_files)
+-LOCAL_MODULE_TAGS := optional
+-LOCAL_MODULE:= online-gcm-ref
+-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+-LOCAL_IS_HOST_MODULE := false
+-
+-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := build/tools/droiddoc/templates-sdk
+-
+-LOCAL_DROIDDOC_OPTIONS := \
+-        -toroot / \
+-        -gcmref \
+-        -hdf android.whichdoc online \
+-        -hdf template.showLanguageMenu true
+-
+-include $(BUILD_DROIDDOC)
+-
+ # ==== docs that have all of the stuff that's @hidden =======================
+ include $(CLEAR_VARS)
+ 
+diff --git a/api/current.txt b/api/current.txt
+index 6b893d5..5534701 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -4782,6 +4782,7 @@ package android.bluetooth {
+     method public int getBondState();
+     method public java.lang.String getName();
+     method public android.os.ParcelUuid[] getUuids();
++    method public boolean removeDevBond();
+     method public void writeToParcel(android.os.Parcel, int);
+     field public static final java.lang.String ACTION_ACL_CONNECTED = "android.bluetooth.device.action.ACL_CONNECTED";
+     field public static final java.lang.String ACTION_ACL_DISCONNECTED = "android.bluetooth.device.action.ACL_DISCONNECTED";
+diff --git a/core/java/android/bluetooth/BluetoothDevice.java b/core/java/android/bluetooth/BluetoothDevice.java
+index 4cc22b4..acfd5d8 100755
+--- a/core/java/android/bluetooth/BluetoothDevice.java
++++ b/core/java/android/bluetooth/BluetoothDevice.java
+@@ -768,6 +768,18 @@ public final class BluetoothDevice implements Parcelable {
+         return false;
+     }
+ 
++    public boolean removeDevBond() {
++        if (sService == null) {
++            Log.e(TAG, "BT not enabled, Cannot remove Remote Device bond");
++            return false;
++        }
++
++        try{
++            return sService.removeDevBond(this);
++        } catch (RemoteException e) {Log.e(TAG, "", e);}
++        return false;
++    }
++
+     /**
+      * Get the bond state of the remote device.
+      * <p>Possible values for the bond state are:
+diff --git a/core/java/android/bluetooth/BluetoothSocket.java b/core/java/android/bluetooth/BluetoothSocket.java
+index 8029a1a..957286b 100644
+--- a/core/java/android/bluetooth/BluetoothSocket.java
++++ b/core/java/android/bluetooth/BluetoothSocket.java
+@@ -297,6 +297,7 @@ public final class BluetoothSocket implements Closeable {
+      * @throws IOException on error, for example connection failure
+      */
+     public void connect() throws IOException {
++        
+         if (mDevice == null) throw new IOException("Connect is called on null device");
+ 
+         try {
+@@ -376,7 +377,7 @@ public final class BluetoothSocket implements Closeable {
+                 mPort = channel;
+             } // else ASSERT(mPort == channel)
+             ret = 0;
+-        } catch (IOException e) {
++        } catch (IOException e) {// This is the problem. 
+             Log.e(TAG, "bindListen, fail to get port number, exception: " + e);
+             return -1;
+         }
+diff --git a/core/java/android/bluetooth/IBluetooth.aidl b/core/java/android/bluetooth/IBluetooth.aidl
+index d016c26..fb13dcb 100644
+--- a/core/java/android/bluetooth/IBluetooth.aidl
++++ b/core/java/android/bluetooth/IBluetooth.aidl
+@@ -35,6 +35,12 @@ interface IBluetooth
+     boolean enableNoAutoConnect();
+     boolean disable();
+ 
++    // For bluetooth device app mapping.
++    int getClientUid();
++    boolean appDevChecking(in String macAddress);
++    boolean addDevApp(in String macAddress);
++    boolean deleteDevApp(in String macAddress);
++
+     String getAddress();
+     ParcelUuid[] getUuids();
+     boolean setName(in String name);
+@@ -57,6 +63,7 @@ interface IBluetooth
+     boolean createBond(in BluetoothDevice device);
+     boolean cancelBondProcess(in BluetoothDevice device);
+     boolean removeBond(in BluetoothDevice device);
++    boolean removeDevBond( in BluetoothDevice device);
+     int getBondState(in BluetoothDevice device);
+ 
+     String getRemoteName(in BluetoothDevice device);
